@@ -3,8 +3,12 @@ package net.bkshrader.snake3d;
 import processing.core.PApplet;
 import processing.core.PVector;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Scanner;
 
 /**
  * A Three-dimensional take on the classic snake game
@@ -16,10 +20,9 @@ public class Game extends PApplet {
     private int dimension, worldDimension;
     private boolean boost, dead;
 
-    //TODO: Make an option that doesn't require recompiling
-    private final boolean invertControls = true;
-    private final int difficulty = 50;
-    private final int worldSize = 50;
+    private boolean invertControls;
+    private int difficulty;
+    private int worldSize;
 
 
     @Override
@@ -31,6 +34,8 @@ public class Game extends PApplet {
     public void setup() {
         surface.setTitle("Snake 3D");
         noCursor();
+
+        importSettings();
 
         dimension = 5;
         worldDimension = dimension * worldSize;
@@ -207,6 +212,36 @@ public class Game extends PApplet {
             boost = false;
         } else if (keyCode == LEFT || keyCode == RIGHT || keyCode == UP || keyCode == DOWN) {
             refactorCamera();
+        }
+    }
+
+    private void importSettings(){
+        try{
+            File settings = new File("../settings.txt");
+            if(!(settings.exists() && settings.isFile())){
+                //Create default settings file
+                //noinspection ResultOfMethodCallIgnored
+                settings.createNewFile();
+                PrintWriter settingsWriter = new PrintWriter(settings);
+                settingsWriter.println("50:worldSize");
+                settingsWriter.println("50:difficulty");
+                settingsWriter.println("true:invertControls");
+                settingsWriter.close();
+                throw new FileNotFoundException("No settings file found. Generated new one.");
+            }else{
+                Scanner settingScanner = new Scanner(settings);
+                worldSize = Integer.parseInt(settingScanner.nextLine().split(":")[0]);
+                difficulty = Integer.parseInt(settingScanner.nextLine().split(":")[0]);
+                invertControls = Boolean.parseBoolean(settingScanner.nextLine().split(":")[0]);
+            }
+        }catch(Exception e){
+            System.err.println("Unable to load settings, intitialized to defaults instead");
+            e.printStackTrace();
+
+            //Default Settings
+            worldSize = 50;
+            difficulty = 50;
+            invertControls = true;
         }
     }
 
