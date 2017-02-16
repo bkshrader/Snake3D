@@ -48,10 +48,11 @@ public class Game extends PApplet {
         translate(worldCenter.x, worldCenter.y, worldCenter.z);
 
         //dilute camera movement
-        if (!vectorsEqual(actualCameraR, cameraR))
+        if (!actualCameraR.equals(cameraR))
             actualCameraR.add(cameraR.copy().sub(actualCameraR).mult(0.1f)); //Add a tenth of the difference
-        if (!vectorsEqual(actualUp, velocity))
-            actualUp.add(velocity.copy().sub(actualUp).mult(0.1f));
+
+        if (!actualUp.equals(normal))
+            actualUp.add(normal.copy().sub(actualUp).mult(0.1f));
 
         beginCamera();
         camera(actualCameraR.x, actualCameraR.y, actualCameraR.z, 0, 0, 0, -actualUp.x, -actualUp.y, -actualUp.z);
@@ -59,7 +60,7 @@ public class Game extends PApplet {
 
 
         pushMatrix();
-        //Draw
+        //Start Draw
 
         //Playing field
         pushStyle();
@@ -73,8 +74,7 @@ public class Game extends PApplet {
         translate(position.x, position.y, position.z);
         box(dimension);
 
-//        actualCameraR = cameraR.copy();
-//        actualUp = velocity.copy();
+        //End Draw
         popMatrix();
 
 
@@ -129,8 +129,9 @@ public class Game extends PApplet {
     }
 
     public void refactorCameraR() {
-        this.cameraR = normal.copy();
+        this.cameraR = velocity.copy();
         this.cameraR = this.cameraR.setMag(worldDimension * 1.5f);
+        this.cameraR.mult(-1f);
     }
 
     public void rotateAll(PVector axis) {
@@ -172,16 +173,8 @@ public class Game extends PApplet {
             a.x = ((a.x < .5f) ? 0f : 1f);
             a.y = ((a.y < .5f) ? 0f : 1f);
             a.z = ((a.z < .5f) ? 0f : 1f);
-        } while (!vectorsEqual(a, a.normalize()));
+        } while (!a.equals(a.normalize()));
         return a;
-    }
-
-    public boolean vectorsEqual(PVector first, PVector... vectors) {
-        float ax = first.x, ay = first.y, az = first.z;
-        for (PVector v : vectors)
-            if ((v.x - ax) / ax > 0.00001f || (v.y - ay) / ay > 0.00001f || (v.z - az) / az > 0.00001f) //Allows 0.001% error
-                return false;
-        return true;
     }
 
     public static void main(String[] args) {
