@@ -44,16 +44,15 @@ public class Game extends PApplet {
         tail.add(position.copy());
 
         invertControls = false;
-        boost = false;
-
         dead = false;
+        boost = false;
 
         placeFood();
     }
 
     @Override
     public void draw() {
-        if(dead)
+        if (dead)
             return;
 
         //Setup
@@ -66,7 +65,7 @@ public class Game extends PApplet {
 
         //Dilute camera movement
         if (!actualCameraR.equals(cameraR))
-            actualCameraR.add(cameraR.copy().sub(actualCameraR).mult(0.1f)); //Add a tenth of the difference
+            actualCameraR.add(cameraR.copy().sub(actualCameraR).mult(0.1f));
 
         if (!actualUp.equals(cameraUp))
             actualUp.add(cameraUp.copy().sub(actualUp).mult(0.1f));
@@ -126,9 +125,7 @@ public class Game extends PApplet {
         popMatrix();
 
         //Update positions
-        //TODO: change from constant to fraction of food eaten
-        //((int) difficulty/tail.size() + 1)
-        if (frameCount % 30 == 0 || boost) {
+        if (frameCount % Math.max(difficulty - tail.size() + 1, 0) == 0 || boost) {
             position.add(velocity);
 
             //Check if food is eaten
@@ -174,7 +171,7 @@ public class Game extends PApplet {
         }
 
         if (key == ' ') {
-            if(!dead)
+            if (!dead)
                 boost = true;
             else
                 setup();
@@ -204,8 +201,13 @@ public class Game extends PApplet {
         }
     }
 
-    private boolean outOfField(){
-        return position.x > worldDimension / dimension || position.x < -worldDimension / dimension || position.y > worldDimension / dimension || position.y < -worldDimension / dimension || position.z < -worldDimension / dimension || position.z > worldDimension / dimension;
+    private boolean outOfField() {
+        return position.x > worldDimension / (2f * dimension) ||
+                position.x < -worldDimension / (2f * dimension) ||
+                position.y > worldDimension / (2f * dimension) ||
+                position.y < -worldDimension / (2f * dimension) ||
+                position.z > worldDimension / (2f * dimension) ||
+                position.z < -worldDimension / (2f * dimension);
     }
 
     private void translate(PVector translationVector) {
@@ -234,7 +236,7 @@ public class Game extends PApplet {
     private void kill() {
         dead = true;
 
-        //draw killscreen
+        //draw kill screen
         pushMatrix();
         pushStyle();
 
