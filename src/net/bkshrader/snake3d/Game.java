@@ -11,10 +11,10 @@ import java.util.LinkedList;
  * Created by Bradley on 2/13/2017.
  */
 public class Game extends PApplet {
-    private PVector position, normal, velocity, cameraR, actualCameraR, actualUp, worldCenter, foodPosition;
+    private PVector position, normal, velocity, cameraR, actualCameraR, cameraUp, actualUp, worldCenter, foodPosition;
     private LinkedList<PVector> tail;
     private int dimension, worldDimension;
-    private boolean boost;
+    private boolean boost, dead, invertControls;
 
     private int difficulty = 50;
 
@@ -36,15 +36,16 @@ public class Game extends PApplet {
         velocity = new PVector(0, 0, -1);
         normal = new PVector(0, -1, 0);
 
-        refactorCameraR();
-        actualCameraR = cameraR;
-        actualUp = velocity.copy();
+        refactorCamera();
+        actualCameraR = cameraR.copy();
+        actualUp = cameraUp.copy();
 
         placeFood();
 
         tail = new LinkedList<>();
         tail.add(position.copy());
 
+        invertControls = false;
         boost = false;
     }
 
@@ -62,8 +63,8 @@ public class Game extends PApplet {
         if (!actualCameraR.equals(cameraR))
             actualCameraR.add(cameraR.copy().sub(actualCameraR).mult(0.1f)); //Add a tenth of the difference
 
-        if (!actualUp.equals(normal))
-            actualUp.add(normal.copy().sub(actualUp).mult(0.1f));
+        if (!actualUp.equals(cameraUp))
+            actualUp.add(cameraUp.copy().sub(actualUp).mult(0.1f));
 
         //Place camera in world
         beginCamera();
@@ -101,7 +102,18 @@ public class Game extends PApplet {
             PVector currentPosition = snakeTail.next();
             PVector actualPosition = currentPosition.copy().mult(dimension);
             translate(actualPosition);
-            box(dimension);
+
+            //Test Collision
+            pushStyle();
+            float actualDimension = dimension;
+            if (currentPosition.equals(position) && snakeTail.hasNext()) {
+                actualDimension *= 1.1f;
+                stroke(255, 0, 0);
+                fill(255, 0, 0);
+                dead = true;
+            }
+            box(actualDimension);
+            popStyle();
             popMatrix();
         }
 
@@ -127,13 +139,15 @@ public class Game extends PApplet {
             }
         }
 
-//        if(position.x > width || position.x < 0 || position.y > width || position.y < 0 || position.z < -width || position.z > 0)
-//            kill();
+
+        if (dead || position.x > worldDimension / dimension || position.x < -worldDimension / dimension || position.y > worldDimension / dimension || position.y < -worldDimension / dimension || position.z < -worldDimension / dimension || position.z > worldDimension / dimension)
+            kill();
 
     }
 
     @Override
     public void keyPressed() {
+
         if (key == 'w' || key == 'a' || key == 's' || key == 'd') {
             PVector axis = new PVector();
             switch (key) {
@@ -155,21 +169,21 @@ public class Game extends PApplet {
         }
 
         if (key == ' ') {
-//            placeFood();
             boost = true;
         }
-        //Left arrow - rotate current reference ccw about the y axis (left moves towards player)
+
+        //Arrow Keys allow camera to peek around corner for better view
         else {
-            if (keyCode == LEFT) ;
-//            this.rotation.add(0, PI / 2, 0);
-                //right arrow - rotate current reference cw about the y axis (left moves away from player)
-            else if (keyCode == RIGHT) ;
-//            this.rotation.add(0, -PI / 2, 0);
-                //Up arrow - rotate current reference cw about the x axis (top moves away from player)
-            else if (keyCode == UP) ;
-//            this.rotation.add(PI / 2, 0, 0);
-                //Down arrow - rotate current reference ccw about the x axis (top moves towards player)
-            else if (keyCode == DOWN) ;
+
+            if (keyCode == LEFT) {
+                peekCamera(cameraUp);
+            } else if (keyCode == RIGHT) {
+                peekCamera(cameraUp.copy().mult(-1f));
+            } else if (keyCode == UP) {
+                peekCamera(normal.copy().cross(coerceVectorToAxis(velocity.copy())));
+            } else if (keyCode == DOWN) {
+                peekCamera(coerceVectorToAxis(velocity.copy()).cross(normal.copy()));
+            }
         }
     }
 
@@ -177,6 +191,8 @@ public class Game extends PApplet {
     public void keyReleased() {
         if (key == ' ') {
             boost = false;
+        } else if (keyCode == LEFT || keyCode == RIGHT || keyCode == UP || keyCode == DOWN) {
+            refactorCamera();
         }
     }
 
@@ -198,26 +214,43 @@ public class Game extends PApplet {
 //        System.out.printf("Food placed at %f, %f, %f%n", foodPosition.x, foodPosition.y, foodPosition.z);
     }
 
-    public boolean boxContains(PVector boxPosition, PVector boxDimensions, PVector point) {
-        return (point.x < boxPosition.x + boxDimensions.x && point.x > boxPosition.x - boxDimensions.x) && (point.y < boxPosition.y + boxDimensions.y && point.y > boxPosition.y - boxDimensions.y) && (point.z < boxPosition.z + boxDimensions.z && point.z > boxPosition.z - boxDimensions.z);
-    }
-
-    public boolean boxContains(PVector boxPosition, float cubeDimension, PVector point) {
-        return boxContains(boxPosition, new PVector(cubeDimension, cubeDimension, cubeDimension), point);
-    }
 
     public void kill() {
         //draw killscreen
+        pushMatrix();
+        pushStyle();
 
+        camera();
+
+        textAlign(CENTER, BOTTOM);
+        textSize(42);
+        fill(255);
+        text("Game Over", width/2, height/2 - 10);
+        textAlign(CENTER, TOP);
+        textSize(24);
+        text(String.format("Score: %d", tail.size() - 1), width/2f, height/2f + 10);
+        text("Press spacebar to restart", width/2f, height/2f + 50);
+        popStyle();
+        popMatrix();
         noLoop();
     }
 
-    public void refactorCameraR() {
+    public void refactorCamera() {
         this.cameraR = velocity.copy();
         this.cameraR = rotateVector(cameraR, normal, PI / 10);
         this.cameraR = rotateVector(cameraR, normal.cross(velocity), PI / 10);
         this.cameraR = this.cameraR.setMag(worldDimension * 1.5f);
         this.cameraR.mult(-1f);
+
+        this.cameraUp = normal.copy();
+    }
+
+    public void peekCamera(PVector axis) {
+        this.cameraR = rotateVector(velocity.copy(), axis);
+        this.cameraR = this.cameraR.setMag(worldDimension * 1.5f);
+        this.cameraR.mult(-1f);
+
+        this.cameraUp = coerceVectorToAxis(rotateVector(normal.copy(), axis));
     }
 
     public void rotateAll(PVector axis) {
@@ -225,7 +258,7 @@ public class Game extends PApplet {
         velocity = coerceVectorToAxis(velocity);
         normal = rotateVector(normal, axis);
         normal = coerceVectorToAxis(normal);
-        refactorCameraR();
+        refactorCamera();
     }
 
     public PVector rotateVector(PVector direction, PVector axis, float theta) {
