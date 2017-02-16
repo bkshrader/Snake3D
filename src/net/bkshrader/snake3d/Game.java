@@ -14,9 +14,12 @@ public class Game extends PApplet {
     private PVector position, normal, velocity, cameraR, actualCameraR, cameraUp, actualUp, worldCenter, foodPosition;
     private LinkedList<PVector> tail;
     private int dimension, worldDimension;
-    private boolean boost, dead, invertControls;
+    private boolean boost, dead;
 
-    private int difficulty = 50;
+    //TODO: Make an option that doesn't require recompiling
+    private final boolean invertControls = true;
+    private final int difficulty = 50;
+    private final int worldSize = 50;
 
 
     @Override
@@ -30,7 +33,7 @@ public class Game extends PApplet {
         noCursor();
 
         dimension = 5;
-        worldDimension = dimension * 50;
+        worldDimension = dimension * worldSize;
         position = new PVector(0, 0, 0);
         worldCenter = new PVector(width / 2, height / 2, 50);
         velocity = new PVector(0, 0, -1);
@@ -43,7 +46,6 @@ public class Game extends PApplet {
         tail = new LinkedList<>();
         tail.add(position.copy());
 
-        invertControls = false;
         dead = false;
         boost = false;
 
@@ -152,15 +154,22 @@ public class Game extends PApplet {
 
         if (key == 'w' || key == 'a' || key == 's' || key == 'd') {
             PVector axis = new PVector();
+
             switch (key) {
                 case 'w':
                     velocity.cross(normal, axis);
+                    if(invertControls) {
+                        axis.mult(-1f);
+                    }
                     break;
                 case 'a':
                     axis = normal.copy().mult(-1f);
                     break;
                 case 's':
                     normal.cross(velocity, axis);
+                    if (invertControls) {
+                        axis.mult(-1f);
+                    }
                     break;
                 case 'd':
                     axis = normal.copy();
@@ -202,12 +211,12 @@ public class Game extends PApplet {
     }
 
     private boolean outOfField() {
-        return position.x > worldDimension / (2f * dimension) ||
-                position.x < -worldDimension / (2f * dimension) ||
-                position.y > worldDimension / (2f * dimension) ||
-                position.y < -worldDimension / (2f * dimension) ||
-                position.z > worldDimension / (2f * dimension) ||
-                position.z < -worldDimension / (2f * dimension);
+        return position.x > 0.5f * worldSize ||
+                position.x < -0.5f * worldSize||
+                position.y > 0.5f * worldSize ||
+                position.y < -0.5f * worldSize||
+                position.z > 0.5f * worldSize ||
+                position.z < -0.5f * worldSize;
     }
 
     private void translate(PVector translationVector) {
