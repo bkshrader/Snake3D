@@ -40,17 +40,22 @@ public class Game extends PApplet {
         actualCameraR = cameraR.copy();
         actualUp = cameraUp.copy();
 
-        placeFood();
-
         tail = new LinkedList<>();
         tail.add(position.copy());
 
         invertControls = false;
         boost = false;
+
+        dead = false;
+
+        placeFood();
     }
 
     @Override
     public void draw() {
+        if(dead)
+            return;
+
         //Setup
         background(0);
         stroke(255);
@@ -140,7 +145,7 @@ public class Game extends PApplet {
         }
 
 
-        if (dead || position.x > worldDimension / dimension || position.x < -worldDimension / dimension || position.y > worldDimension / dimension || position.y < -worldDimension / dimension || position.z < -worldDimension / dimension || position.z > worldDimension / dimension)
+        if (dead || outOfField())
             kill();
 
     }
@@ -169,7 +174,10 @@ public class Game extends PApplet {
         }
 
         if (key == ' ') {
-            boost = true;
+            if(!dead)
+                boost = true;
+            else
+                setup();
         }
 
         //Arrow Keys allow camera to peek around corner for better view
@@ -196,46 +204,58 @@ public class Game extends PApplet {
         }
     }
 
-    public void translate(PVector translationVector) {
+    private boolean outOfField(){
+        return position.x > worldDimension / dimension || position.x < -worldDimension / dimension || position.y > worldDimension / dimension || position.y < -worldDimension / dimension || position.z < -worldDimension / dimension || position.z > worldDimension / dimension;
+    }
+
+    private void translate(PVector translationVector) {
         translate(translationVector.x, translationVector.y, translationVector.z);
     }
 
-    public void placeFood() {
-//        do {
-        float xf = (float) Math.random() - 0.5f;
-        float yf = (float) Math.random() - 0.5f;
-        float zf = (float) Math.random() - 0.5f;
-        float x = (float) (xf * (worldDimension / dimension));
-        float y = (float) (yf * (worldDimension / dimension));
-        float z = (float) (zf * (worldDimension / dimension));
+    private void placeFood() {
+        do {
+            float x = (float) (Math.random() - 0.5f) * (worldDimension / dimension);
+            float y = (float) (Math.random() - 0.5f) * (worldDimension / dimension);
+            float z = (float) (Math.random() - 0.5f) * (worldDimension / dimension);
 
-        foodPosition = coercePositionToGrid(new PVector(x, y, z));
-//        } while (false); //TODO: check all body collisions
-//        System.out.printf("Food placed at %f, %f, %f%n", foodPosition.x, foodPosition.y, foodPosition.z);
+            foodPosition = coercePositionToGrid(new PVector(x, y, z));
+        } while (collidesBody(foodPosition));
     }
 
+    private boolean collidesBody(PVector point) {
+        point = coercePositionToGrid(point);
+        for (PVector body : tail) {
+            if (body != null && body.equals(point))
+                return true;
+        }
+        return false;
+    }
 
-    public void kill() {
+    private void kill() {
+        dead = true;
+
         //draw killscreen
         pushMatrix();
         pushStyle();
 
         camera();
+        noLights();
+
+        translate(0, 0, worldDimension);
 
         textAlign(CENTER, BOTTOM);
         textSize(42);
         fill(255);
-        text("Game Over", width/2, height/2 - 10);
+        text("Game Over", width / 2, height / 2 - 10);
         textAlign(CENTER, TOP);
         textSize(24);
-        text(String.format("Score: %d", tail.size() - 1), width/2f, height/2f + 10);
-        text("Press spacebar to restart", width/2f, height/2f + 50);
+        text(String.format("Score: %d", tail.size() - 1), width / 2f, height / 2f + 10);
+        text("Press spacebar to restart", width / 2f, height / 2f + 50);
         popStyle();
         popMatrix();
-        noLoop();
     }
 
-    public void refactorCamera() {
+    private void refactorCamera() {
         this.cameraR = velocity.copy();
         this.cameraR = rotateVector(cameraR, normal, PI / 10);
         this.cameraR = rotateVector(cameraR, normal.cross(velocity), PI / 10);
@@ -245,7 +265,7 @@ public class Game extends PApplet {
         this.cameraUp = normal.copy();
     }
 
-    public void peekCamera(PVector axis) {
+    private void peekCamera(PVector axis) {
         this.cameraR = rotateVector(velocity.copy(), axis);
         this.cameraR = this.cameraR.setMag(worldDimension * 1.5f);
         this.cameraR.mult(-1f);
@@ -253,7 +273,7 @@ public class Game extends PApplet {
         this.cameraUp = coerceVectorToAxis(rotateVector(normal.copy(), axis));
     }
 
-    public void rotateAll(PVector axis) {
+    private void rotateAll(PVector axis) {
         velocity = rotateVector(velocity, axis);
         velocity = coerceVectorToAxis(velocity);
         normal = rotateVector(normal, axis);
@@ -261,7 +281,7 @@ public class Game extends PApplet {
         refactorCamera();
     }
 
-    public PVector rotateVector(PVector direction, PVector axis, float theta) {
+    private PVector rotateVector(PVector direction, PVector axis, float theta) {
         float x = direction.x, y = direction.y, z = direction.z;
         float u = axis.x, v = axis.y, w = axis.z;
 
@@ -278,11 +298,11 @@ public class Game extends PApplet {
         return new PVector(xPrime, yPrime, zPrime).normalize();
     }
 
-    public PVector rotateVector(PVector direction, PVector axis) {
+    private PVector rotateVector(PVector direction, PVector axis) {
         return rotateVector(direction, axis, PI / 2);
     }
 
-    public PVector coercePositionToGrid(PVector pos) {
+    private PVector coercePositionToGrid(PVector pos) {
         PVector out = pos.copy();
         out.x = floor((worldDimension * pos.x) / worldDimension);
         out.y = floor((worldDimension * pos.y) / worldDimension);
@@ -290,8 +310,8 @@ public class Game extends PApplet {
         return out;
     }
 
-    public PVector coerceVectorToAxis(PVector vect) {
-        PVector a = vect.normalize();
+    private PVector coerceVectorToAxis(PVector vector) {
+        PVector a = vector.normalize();
         do {
             a.x = ((abs(a.x) < .01f) ? 0f : Math.signum(a.x));
             a.y = ((abs(a.y) < .01f) ? 0f : Math.signum(a.y));
